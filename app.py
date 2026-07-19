@@ -10,7 +10,7 @@ import streamlit as st
 
 import reports
 import sleeper
-from sleeper import SleeperError
+from sleeper import API_VERSION, SleeperError
 
 STYLES = """
 <style>
@@ -90,8 +90,41 @@ html, body, [class*="css"] {
   color: var(--muted);
   font-size: 0.92rem;
 }
+
+.fi-note {
+  margin: 1.25rem 0 0 0;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.fi-note strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.fi-note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86em;
+  color: var(--accent-2);
+}
+
+.fi-meta {
+  margin: 0.75rem 0 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.fi-meta code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--accent-2);
+}
 </style>
 """
+
+SAMPLE_LEAGUE_ID = "289646328504385536"
 
 
 def _season_options(state: dict[str, Any]) -> tuple[list[str], str]:
@@ -118,7 +151,7 @@ def _dataframe_to_xlsx_bytes(df: pd.DataFrame) -> bytes:
 def _resolve_league_id() -> str | None:
     lookup_mode = st.radio(
         "How do you want to find your league?",
-        ["Sleeper username", "League ID"],
+        ["Username", "League ID"],
         horizontal=True,
     )
 
@@ -139,7 +172,7 @@ def _resolve_league_id() -> str | None:
         return league["league_id"]
 
     username = st.text_input(
-        "Sleeper username",
+        "Username",
         placeholder="your_sleeper_username",
     ).strip()
     if not username:
@@ -179,20 +212,26 @@ def _resolve_league_id() -> str | None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="Fantasy Intel",
+        page_title="Fantasy Football Intel",
         page_icon="FI",
         layout="centered",
     )
     st.markdown(STYLES, unsafe_allow_html=True)
 
     st.markdown(
-        """
+        f"""
         <div class="fi-hero">
-          <h1 class="fi-brand">Fantasy <span>Intel</span></h1>
+          <h1 class="fi-brand">Fantasy Football <span>Intel</span></h1>
           <p class="fi-lede">
-            Pull current rosters from your Sleeper league and download them as CSV or Excel.
+            Pull current rosters for all teams in your fantasy football league and export them to CSV or Excel.
           </p>
           <hr class="fi-rule" />
+          <p class="fi-note">
+            <strong>Sleeper only for now</strong> — support for more fantasy platforms is in development.
+            Want to try it without your own league? Use sample league ID
+            <code>{SAMPLE_LEAGUE_ID}</code> (Sleeper Friends League, 2018).
+          </p>
+          <p class="fi-meta">Sleeper API <code>{API_VERSION}</code></p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -202,7 +241,7 @@ def main() -> None:
         """
         <div class="fi-section">
           <h2>League</h2>
-          <p>Look up by Sleeper username or paste a league ID directly.</p>
+          <p>Search by username or paste a league ID directly.</p>
         </div>
         """,
         unsafe_allow_html=True,
