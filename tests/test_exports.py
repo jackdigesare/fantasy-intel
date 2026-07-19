@@ -39,7 +39,9 @@ class ExportSecurityTests(unittest.TestCase):
         exported_values = [worksheet.cell(row=row, column=1).value for row in range(2, 10)]
         exported_numbers = [worksheet.cell(row=row, column=2).value for row in range(2, 10)]
 
-        self.assertEqual(exported_values[:7], [f"'{v}" for v in self.values[:7]])
+        # XLSX XML normalizes carriage returns to line feeds when reloaded.
+        expected_values = [f"'{v}".replace("\r", "\n") for v in self.values[:7]]
+        self.assertEqual(exported_values[:7], expected_values)
         self.assertEqual(exported_values[7], "ordinary text")
         self.assertEqual(exported_numbers, list(range(8)))
 
