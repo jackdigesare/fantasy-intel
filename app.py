@@ -125,6 +125,7 @@ html, body, [class*="css"] {
 """
 
 SAMPLE_LEAGUE_ID = "289646328504385536"
+SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
 
 
 def _season_options(state: dict[str, Any]) -> tuple[list[str], str]:
@@ -137,14 +138,27 @@ def _season_options(state: dict[str, Any]) -> tuple[list[str], str]:
     return seasons, current
 
 
+def _sanitize_spreadsheet_value(value: Any) -> Any:
+    """Keep untrusted text from being interpreted as a spreadsheet formula."""
+    if isinstance(value, str) and value.startswith(SPREADSHEET_FORMULA_PREFIXES):
+        return f"'{value}"
+    return value
+
+
+def _sanitize_spreadsheet_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    return df.apply(lambda column: column.map(_sanitize_spreadsheet_value))
+
+
 def _dataframe_to_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8")
+    safe_df = _sanitize_spreadsheet_dataframe(df)
+    return safe_df.to_csv(index=False).encode("utf-8")
 
 
 def _dataframe_to_xlsx_bytes(df: pd.DataFrame) -> bytes:
     buffer = io.BytesIO()
+    safe_df = _sanitize_spreadsheet_dataframe(df)
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="rosters")
+        safe_df.to_excel(writer, index=False, sheet_name="rosters")
     return buffer.getvalue()
 
 
