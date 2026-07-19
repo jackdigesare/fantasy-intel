@@ -9,8 +9,8 @@ import pandas as pd
 import streamlit as st
 
 import reports
-import sleeper
-from sleeper import API_VERSION, SleeperError
+import sleeper_api
+from sleeper_api import API_VERSION, SleeperError
 
 STYLES = """
 <style>
@@ -164,7 +164,7 @@ def _resolve_league_id() -> str | None:
         if not league_id:
             return None
         try:
-            league = sleeper.get_league(league_id)
+            league = sleeper_api.get_league(league_id)
         except SleeperError as exc:
             st.error(str(exc))
             return None
@@ -179,8 +179,8 @@ def _resolve_league_id() -> str | None:
         return None
 
     try:
-        user = sleeper.get_user(username)
-        state = sleeper.get_nfl_state()
+        user = sleeper_api.get_user(username)
+        state = sleeper_api.get_nfl_state()
     except SleeperError as exc:
         st.error(str(exc))
         return None
@@ -193,7 +193,7 @@ def _resolve_league_id() -> str | None:
     )
 
     try:
-        leagues = sleeper.get_user_leagues(user["user_id"], season)
+        leagues = sleeper_api.get_user_leagues(user["user_id"], season)
     except SleeperError as exc:
         st.error(str(exc))
         return None
@@ -274,9 +274,9 @@ def main() -> None:
 
     with st.spinner("Building roster report…"):
         try:
-            rosters = sleeper.get_rosters(league_id)
-            users = sleeper.get_league_users(league_id)
-            players = sleeper.get_players()
+            rosters = sleeper_api.get_rosters(league_id)
+            users = sleeper_api.get_league_users(league_id)
+            players = sleeper_api.get_players()
             df = reports.build_roster_report(rosters, users, players)
         except SleeperError as exc:
             st.error(str(exc))
