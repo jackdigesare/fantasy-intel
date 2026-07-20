@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 
 BASE_URL = "https://api.sleeper.app/v1"
+API_VERSION = "v1"
 TIMEOUT = 30
 
 

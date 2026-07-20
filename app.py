@@ -9,8 +9,8 @@ import pandas as pd
 import streamlit as st
 
 import reports
-import sleeper
-from sleeper import SleeperError
+import sleeper_api
+from sleeper_api import API_VERSION, SleeperError
 
 STYLES = """
 <style>
@@ -92,6 +92,37 @@ html, body, [class*="css"] {
   color: var(--muted);
 }
 
+.fi-note {
+  margin: 1.25rem 0 0 0;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.fi-note strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.fi-note code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86em;
+  color: var(--accent);
+}
+
+.fi-meta {
+  margin: 0.75rem 0 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.fi-meta code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--accent);
+}
+
 div[data-testid="stVerticalBlockBorderWrapper"] {
   background: var(--surface) !important;
   border: 1px solid var(--line) !important;
@@ -121,6 +152,9 @@ hr {
 </style>
 """
 
+SAMPLE_LEAGUE_ID = "289646328504385536"
+SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
 
 def apply_styles() -> None:
     st.markdown(STYLES, unsafe_allow_html=True)
@@ -128,13 +162,19 @@ def apply_styles() -> None:
 
 def render_hero() -> None:
     st.markdown(
-        """
+        f"""
         <div class="fi-hero">
-          <h1 class="fi-brand">Fantasy Intel</h1>
+          <h1 class="fi-brand">Fantasy Football Intel</h1>
           <p class="fi-lede">
-            Pull current rosters from your Sleeper league and download them as CSV or Excel.
+            Pull current rosters for all teams in your fantasy football league and export them to CSV or Excel.
           </p>
           <hr class="fi-rule" />
+          <p class="fi-note">
+            <strong>Sleeper only for now</strong> — support for more fantasy platforms is in development.
+            Want to try it without your own league? Use sample league ID
+            <code>{SAMPLE_LEAGUE_ID}</code> (Sleeper Friends League, 2018).
+          </p>
+          <p class="fi-meta">Sleeper API <code>{API_VERSION}</code></p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -159,21 +199,34 @@ def _season_options(state: dict[str, Any]) -> tuple[list[str], str]:
     return seasons, current
 
 
+def _sanitize_spreadsheet_value(value: Any) -> Any:
+    """Keep untrusted text from being interpreted as a spreadsheet formula."""
+    if isinstance(value, str) and value.startswith(SPREADSHEET_FORMULA_PREFIXES):
+        return f"'{value}"
+    return value
+
+
+def _sanitize_spreadsheet_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    return df.apply(lambda column: column.map(_sanitize_spreadsheet_value))
+
+
 def _dataframe_to_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8")
+    safe_df = _sanitize_spreadsheet_dataframe(df)
+    return safe_df.to_csv(index=False).encode("utf-8")
 
 
 def _dataframe_to_xlsx_bytes(df: pd.DataFrame) -> bytes:
     buffer = io.BytesIO()
+    safe_df = _sanitize_spreadsheet_dataframe(df)
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="rosters")
+        safe_df.to_excel(writer, index=False, sheet_name="rosters")
     return buffer.getvalue()
 
 
 def _resolve_league_id() -> str | None:
     lookup_mode = st.radio(
         "How do you want to find your league?",
-        ["Sleeper username", "League ID"],
+        ["Username", "League ID"],
         horizontal=True,
     )
 
@@ -186,7 +239,7 @@ def _resolve_league_id() -> str | None:
         if not league_id:
             return None
         try:
-            league = sleeper.get_league(league_id)
+            league = sleeper_api.get_league(league_id)
         except SleeperError as exc:
             st.error(str(exc))
             return None
@@ -194,15 +247,15 @@ def _resolve_league_id() -> str | None:
         return league["league_id"]
 
     username = st.text_input(
-        "Sleeper username",
+        "Username",
         placeholder="your_sleeper_username",
     ).strip()
     if not username:
         return None
 
     try:
-        user = sleeper.get_user(username)
-        state = sleeper.get_nfl_state()
+        user = sleeper_api.get_user(username)
+        state = sleeper_api.get_nfl_state()
     except SleeperError as exc:
         st.error(str(exc))
         return None
@@ -215,7 +268,7 @@ def _resolve_league_id() -> str | None:
     )
 
     try:
-        leagues = sleeper.get_user_leagues(user["user_id"], season)
+        leagues = sleeper_api.get_user_leagues(user["user_id"], season)
     except SleeperError as exc:
         st.error(str(exc))
         return None
@@ -234,7 +287,7 @@ def _resolve_league_id() -> str | None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="Fantasy Intel",
+        page_title="Fantasy Football Intel",
         page_icon="◈",
         layout="centered",
         initial_sidebar_state="collapsed",
@@ -242,12 +295,12 @@ def main() -> None:
     apply_styles()
     render_hero()
 
-    section("League", "Look up by Sleeper username or paste a league ID directly.")
+    section("League", "Search by username or paste a league ID directly.")
 
     league_id = _resolve_league_id()
     if not league_id:
         st.markdown(
-            '<p class="fi-empty">Enter a <strong>Sleeper username</strong> or '
+            '<p class="fi-empty">Enter a <strong>username</strong> or '
             "<strong>league ID</strong> to continue.</p>",
             unsafe_allow_html=True,
         )
@@ -267,9 +320,9 @@ def main() -> None:
 
     with st.spinner("Building roster report…"):
         try:
-            rosters = sleeper.get_rosters(league_id)
-            users = sleeper.get_league_users(league_id)
-            players = sleeper.get_players()
+            rosters = sleeper_api.get_rosters(league_id)
+            users = sleeper_api.get_league_users(league_id)
+            players = sleeper_api.get_players()
             df = reports.build_roster_report(rosters, users, players)
         except SleeperError as exc:
             st.error(str(exc))
