@@ -14,30 +14,28 @@ from sleeper_api import API_VERSION, SleeperError
 
 STYLES = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&display=swap');
 
 :root {
-  --bg: #0f1a14;
-  --ink: #e8f0ea;
-  --muted: #8fa396;
-  --accent: #3d9a5f;
-  --accent-2: #c4a35a;
-  --surface: #16241c;
-  --line: rgba(232, 240, 234, 0.12);
+  --bg: #F9F6F1;
+  --ink: #141413;
+  --muted: #6F6E69;
+  --accent: #C4A484;
+  --surface: #FFFCFA;
+  --line: rgba(20, 20, 19, 0.14);
   --radius: 8px;
 }
 
 html, body, [class*="css"] {
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-family: "DM Sans", "Segoe UI", sans-serif;
   color: var(--ink);
 }
 
 .stApp {
-  background:
-    radial-gradient(800px 400px at 90% -10%, rgba(61, 154, 95, 0.22), transparent 55%),
-    radial-gradient(600px 360px at 0% 30%, rgba(196, 163, 90, 0.12), transparent 50%),
-    var(--bg);
+  background: var(--bg);
 }
+
+.stApp::before { display: none; }
 
 .block-container {
   max-width: 880px;
@@ -49,46 +47,49 @@ html, body, [class*="css"] {
 
 .fi-hero { margin-bottom: 1.75rem; }
 .fi-brand {
-  font-family: "Barlow Condensed", sans-serif;
-  font-weight: 700;
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 600;
   font-size: clamp(2.75rem, 7vw, 3.75rem);
-  letter-spacing: 0.02em;
-  line-height: 1;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
   color: var(--ink);
   margin: 0 0 0.75rem 0;
-  text-transform: uppercase;
 }
-.fi-brand span { color: var(--accent); }
 .fi-lede {
   font-size: 1.08rem;
   line-height: 1.55;
   color: var(--muted);
-  max-width: 34rem;
+  max-width: 32rem;
   margin: 0;
 }
 .fi-rule {
-  width: 2.75rem;
-  height: 4px;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  margin: 1.15rem 0 0 0;
+  width: 100%;
+  height: 0;
+  background: none;
+  margin: 1.35rem 0 0 0;
   border: 0;
-  border-radius: 2px;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
 }
 
-.fi-section { margin: 2rem 0 0.75rem 0; }
+.fi-section { margin: 2.5rem 0 0.85rem 0; }
 .fi-section h2 {
-  font-family: "Barlow Condensed", sans-serif;
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  margin: 0 0 0.3rem 0;
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: -0.015em;
+  margin: 0 0 0.35rem 0;
   color: var(--ink);
 }
 .fi-section p {
   margin: 0;
   color: var(--muted);
   font-size: 0.92rem;
+}
+
+.fi-empty {
+  margin-top: 0.65rem;
+  color: var(--muted);
 }
 
 .fi-note {
@@ -108,7 +109,7 @@ html, body, [class*="css"] {
 .fi-note code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.86em;
-  color: var(--accent-2);
+  color: var(--accent);
 }
 
 .fi-meta {
@@ -119,13 +120,73 @@ html, body, [class*="css"] {
 }
 .fi-meta code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: var(--accent-2);
+  color: var(--accent);
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--radius) !important;
+  padding: 0.45rem 0.65rem;
+}
+
+div[data-testid="stExpander"] {
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  border-radius: var(--radius) !important;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.75rem 0;
+}
+
+.stMarkdown, .stCaption, p, label, .stText { color: var(--ink); }
+[data-testid="stWidgetLabel"] p { color: var(--muted) !important; }
+
+@media (max-width: 640px) {
+  .block-container { padding-top: 1.5rem; }
+  .fi-brand { font-size: 2.4rem; }
 }
 </style>
 """
 
 SAMPLE_LEAGUE_ID = "289646328504385536"
 SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def apply_styles() -> None:
+    st.markdown(STYLES, unsafe_allow_html=True)
+
+
+def render_hero() -> None:
+    st.markdown(
+        f"""
+        <div class="fi-hero">
+          <h1 class="fi-brand">Fantasy Football Intel</h1>
+          <p class="fi-lede">
+            Pull current rosters for all teams in your fantasy football league and export them to CSV or Excel.
+          </p>
+          <hr class="fi-rule" />
+          <p class="fi-note">
+            <strong>Sleeper only for now</strong> — support for more fantasy platforms is in development.
+            Want to try it without your own league? Use sample league ID
+            <code>{SAMPLE_LEAGUE_ID}</code> (Sleeper Friends League, 2018).
+          </p>
+          <p class="fi-meta">Sleeper API <code>{API_VERSION}</code></p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def section(title: str, subtitle: str = "") -> None:
+    sub = f"<p>{subtitle}</p>" if subtitle else ""
+    st.markdown(
+        f'<div class="fi-section"><h2>{title}</h2>{sub}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def _season_options(state: dict[str, Any]) -> tuple[list[str], str]:
@@ -227,54 +288,25 @@ def _resolve_league_id() -> str | None:
 def main() -> None:
     st.set_page_config(
         page_title="Fantasy Football Intel",
-        page_icon="FI",
+        page_icon="◈",
         layout="centered",
+        initial_sidebar_state="collapsed",
     )
-    st.markdown(STYLES, unsafe_allow_html=True)
+    apply_styles()
+    render_hero()
 
-    st.markdown(
-        f"""
-        <div class="fi-hero">
-          <h1 class="fi-brand">Fantasy Football <span>Intel</span></h1>
-          <p class="fi-lede">
-            Pull current rosters for all teams in your fantasy football league and export them to CSV or Excel.
-          </p>
-          <hr class="fi-rule" />
-          <p class="fi-note">
-            <strong>Sleeper only for now</strong> — support for more fantasy platforms is in development.
-            Want to try it without your own league? Use sample league ID
-            <code>{SAMPLE_LEAGUE_ID}</code> (Sleeper Friends League, 2018).
-          </p>
-          <p class="fi-meta">Sleeper API <code>{API_VERSION}</code></p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        """
-        <div class="fi-section">
-          <h2>League</h2>
-          <p>Search by username or paste a league ID directly.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    section("League", "Search by username or paste a league ID directly.")
 
     league_id = _resolve_league_id()
     if not league_id:
-        st.info("Enter a username or league ID to continue.")
+        st.markdown(
+            '<p class="fi-empty">Enter a <strong>username</strong> or '
+            "<strong>league ID</strong> to continue.</p>",
+            unsafe_allow_html=True,
+        )
         return
 
-    st.markdown(
-        """
-        <div class="fi-section">
-          <h2>Report</h2>
-          <p>Current rosters — one row per player, with starters, bench, taxi, and IR.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    section("Report", "Current rosters — one row per player, with starters, bench, taxi, and IR.")
 
     report_type = st.selectbox("Report type", ["Current rosters"])
     export_format = st.selectbox("File format", ["CSV", "XLSX"])
