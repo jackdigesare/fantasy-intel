@@ -153,7 +153,7 @@ hr {
 """
 
 SAMPLE_LEAGUE_ID = "289646328504385536"
-SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r", "\n")
+SPREADSHEET_FORMULA_PREFIXES = ("=", "+", "-", "@", "＝", "＋", "－", "＠")
 
 
 def apply_styles() -> None:
@@ -201,7 +201,17 @@ def _season_options(state: dict[str, Any]) -> tuple[list[str], str]:
 
 def _sanitize_spreadsheet_value(value: Any) -> Any:
     """Keep untrusted text from being interpreted as a spreadsheet formula."""
-    if isinstance(value, str) and value.startswith(SPREADSHEET_FORMULA_PREFIXES):
+    if not isinstance(value, str):
+        return value
+
+    # Spreadsheet importers may ignore leading whitespace or a byte-order mark
+    # before deciding whether a cell contains a formula.
+    prefix_index = 0
+    while prefix_index < len(value) and (
+        value[prefix_index].isspace() or value[prefix_index] == "\ufeff"
+    ):
+        prefix_index += 1
+    if value[prefix_index:].startswith(SPREADSHEET_FORMULA_PREFIXES):
         return f"'{value}"
     return value
 
