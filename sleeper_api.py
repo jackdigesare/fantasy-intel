@@ -10,6 +10,7 @@ import streamlit as st
 BASE_URL = "https://api.sleeper.app/v1"
 API_VERSION = "v1"
 TIMEOUT = 30
+CACHE_MAX_ENTRIES = 256
 
 
 class SleeperError(Exception):
@@ -21,7 +22,7 @@ def _get(path: str) -> Any:
     try:
         response = requests.get(url, timeout=TIMEOUT)
     except requests.RequestException as exc:
-        raise SleeperError(f"Network error calling Sleeper: {exc}") from exc
+        raise SleeperError("Could not reach Sleeper. Try again shortly.") from exc
 
     if response.status_code == 404:
         raise SleeperError("Not found. Check the username or league ID.")
@@ -33,13 +34,16 @@ def _get(path: str) -> Any:
     if not response.content:
         return None
 
-    data = response.json()
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise SleeperError("Sleeper returned an unexpected response.") from exc
     if data is None:
         raise SleeperError("Not found. Check the username or league ID.")
     return data
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=CACHE_MAX_ENTRIES, show_spinner=False)
 def get_user(username: str) -> dict[str, Any]:
     cleaned = username.strip().lstrip("@")
     if not cleaned:
@@ -50,7 +54,7 @@ def get_user(username: str) -> dict[str, Any]:
     return data
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=1, show_spinner=False)
 def get_nfl_state() -> dict[str, Any]:
     data = _get("/state/nfl")
     if not isinstance(data, dict):
@@ -58,7 +62,7 @@ def get_nfl_state() -> dict[str, Any]:
     return data
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=600, max_entries=CACHE_MAX_ENTRIES, show_spinner=False)
 def get_user_leagues(user_id: str, season: str) -> list[dict[str, Any]]:
     data = _get(f"/user/{user_id}/leagues/nfl/{season}")
     if data is None:
@@ -68,7 +72,7 @@ def get_user_leagues(user_id: str, season: str) -> list[dict[str, Any]]:
     return data
 
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=600, max_entries=CACHE_MAX_ENTRIES, show_spinner=False)
 def get_league(league_id: str) -> dict[str, Any]:
     cleaned = league_id.strip()
     if not cleaned:
@@ -79,7 +83,7 @@ def get_league(league_id: str) -> dict[str, Any]:
     return data
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=300, max_entries=CACHE_MAX_ENTRIES, show_spinner=False)
 def get_rosters(league_id: str) -> list[dict[str, Any]]:
     data = _get(f"/league/{league_id}/rosters")
     if data is None:
@@ -89,7 +93,7 @@ def get_rosters(league_id: str) -> list[dict[str, Any]]:
     return data
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=300, max_entries=CACHE_MAX_ENTRIES, show_spinner=False)
 def get_league_users(league_id: str) -> list[dict[str, Any]]:
     data = _get(f"/league/{league_id}/users")
     if data is None:
@@ -99,7 +103,11 @@ def get_league_users(league_id: str) -> list[dict[str, Any]]:
     return data
 
 
-@st.cache_data(ttl=86400, show_spinner="Loading NFL player map (once per day)…")
+@st.cache_data(
+    ttl=86400,
+    max_entries=1,
+    show_spinner="Loading NFL player map (once per day)…",
+)
 def get_players() -> dict[str, Any]:
     """Full NFL player map (~5MB). Cached for 24 hours per Sleeper guidance."""
     data = _get("/players/nfl")
