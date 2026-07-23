@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import requests
 import streamlit as st
@@ -14,6 +15,19 @@ TIMEOUT = 30
 
 class SleeperError(Exception):
     """Raised when the Sleeper API returns an error or empty result."""
+
+
+def _path_segment(value: str) -> str:
+    """Encode an untrusted value as one URL path segment."""
+    return quote(value, safe="")
+
+
+def _league_id(value: str) -> str:
+    """Validate a Sleeper snowflake before putting it in an API path."""
+    cleaned = value.strip()
+    if not cleaned or not cleaned.isascii() or not cleaned.isdecimal():
+        raise SleeperError("Enter a numeric Sleeper league ID.")
+    return cleaned
 
 
 def _get(path: str) -> Any:
@@ -44,7 +58,7 @@ def get_user(username: str) -> dict[str, Any]:
     cleaned = username.strip().lstrip("@")
     if not cleaned:
         raise SleeperError("Enter a Sleeper username.")
-    data = _get(f"/user/{cleaned}")
+    data = _get(f"/user/{_path_segment(cleaned)}")
     if not isinstance(data, dict) or "user_id" not in data:
         raise SleeperError(f"User '{cleaned}' not found.")
     return data
@@ -60,7 +74,9 @@ def get_nfl_state() -> dict[str, Any]:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def get_user_leagues(user_id: str, season: str) -> list[dict[str, Any]]:
-    data = _get(f"/user/{user_id}/leagues/nfl/{season}")
+    data = _get(
+        f"/user/{_path_segment(user_id)}/leagues/nfl/{_path_segment(season)}"
+    )
     if data is None:
         return []
     if not isinstance(data, list):
@@ -70,9 +86,7 @@ def get_user_leagues(user_id: str, season: str) -> list[dict[str, Any]]:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def get_league(league_id: str) -> dict[str, Any]:
-    cleaned = league_id.strip()
-    if not cleaned:
-        raise SleeperError("Enter a league ID.")
+    cleaned = _league_id(league_id)
     data = _get(f"/league/{cleaned}")
     if not isinstance(data, dict) or "league_id" not in data:
         raise SleeperError(f"League '{cleaned}' not found.")
@@ -81,7 +95,7 @@ def get_league(league_id: str) -> dict[str, Any]:
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_rosters(league_id: str) -> list[dict[str, Any]]:
-    data = _get(f"/league/{league_id}/rosters")
+    data = _get(f"/league/{_league_id(league_id)}/rosters")
     if data is None:
         return []
     if not isinstance(data, list):
@@ -91,7 +105,7 @@ def get_rosters(league_id: str) -> list[dict[str, Any]]:
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_league_users(league_id: str) -> list[dict[str, Any]]:
-    data = _get(f"/league/{league_id}/users")
+    data = _get(f"/league/{_league_id(league_id)}/users")
     if data is None:
         return []
     if not isinstance(data, list):
