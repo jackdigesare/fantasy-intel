@@ -7,7 +7,8 @@ Streamlit app that downloads current Sleeper fantasy football rosters as CSV or 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install --upgrade "pip>=26.2.1"
+python -m pip install -r requirements.txt
 ```
 
 No API keys required — the Sleeper API is public and read-only.
